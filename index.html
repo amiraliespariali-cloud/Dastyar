@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#15152b">
+<title>دستیار هوشمند من</title>
+<style>
+:root{color-scheme:dark;--bg:#10111f;--panel:#191b30;--line:#30334f;--text:#f5f5ff;--muted:#b4b6d0;--accent:#8b7cff;--accent2:#55d6be}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#252044 0,#10111f 48%);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100dvh;display:flex;justify-content:center}
+.app{width:100%;max-width:760px;min-height:100dvh;display:flex;flex-direction:column;padding:14px;gap:12px}
+header{display:flex;align-items:center;gap:12px;padding:10px 4px}.orb{width:48px;height:48px;border-radius:17px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;font-size:25px;box-shadow:0 0 28px #8b7cff55}
+h1{font-size:19px;margin:0}header p{margin:3px 0 0;color:var(--muted);font-size:12px}
+.status{margin-right:auto;font-size:11px;color:var(--accent2);border:1px solid #55d6be55;border-radius:20px;padding:6px 9px}
+#chat{flex:1;min-height:35vh;max-height:65vh;overflow:auto;display:flex;flex-direction:column;gap:12px;padding:4px 0}
+.msg{max-width:90%;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8;padding:12px 14px;border-radius:18px;border:1px solid var(--line);background:var(--panel);animation:rise .2s ease}
+.msg.user{align-self:flex-start;background:#35305b;border-color:#6258a8;border-bottom-left-radius:5px}
+.msg.assistant{align-self:flex-end;border-bottom-right-radius:5px}
+.msg.error{border-color:#a84c65;color:#ffdce5}
+@keyframes rise{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.composer{background:#191b30;border:1px solid var(--line);border-radius:22px;padding:10px;display:flex;gap:8px;align-items:flex-end;position:sticky;bottom:8px}
+textarea{background:transparent;color:var(--text);border:0;outline:0;resize:none;flex:1;min-height:44px;max-height:140px;font:inherit;padding:10px;line-height:1.6}
+button{border:0;color:white;background:#343650;border-radius:15px;min-width:46px;height:46px;font:inherit;cursor:pointer}button.primary{background:linear-gradient(135deg,#7869ef,#5546c8);padding:0 16px;font-weight:700}button:disabled{opacity:.5}
+.tools{display:flex;gap:8px;flex-wrap:wrap}.tools button{height:38px;min-width:0;padding:0 12px;font-size:13px}
+.note{color:var(--muted);font-size:11px;line-height:1.7;text-align:center;padding:0 8px}
+a{color:#bcb5ff}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div class="orb">✦</div><div><h1>دستیار هوشمند من</h1><p>گفت‌وگوی فارسی با هوش مصنوعی آنلاین</p></div><div class="status" id="status">آماده</div></header>
+<div class="tools">
+<button id="mic">🎙️ صحبت کن</button><button id="voice">🔊 پاسخ صوتی: روشن</button><button id="clear">پاک‌کردن گفتگو</button>
+</div>
+<div id="chat" aria-live="polite">
+<div class="msg assistant">سلام! من دستیار هوشمند تو هستم. پیام بنویس یا روی «صحبت کن» بزن. برای پاسخ آنلاین، مدیر برنامه باید ابتدا کلید API را در تنظیمات امن سرور وارد کرده باشد.</div>
+</div>
+<form id="form" class="composer"><textarea id="input" rows="1" placeholder="پیامت را اینجا بنویس..." aria-label="پیام"></textarea><button class="primary" id="send" type="submit">ارسال</button></form>
+<div class="note">برای کارکرد هوش مصنوعی به اینترنت و تنظیم کلید API روی سرور نیاز است. میکروفون در بعضی مرورگرها فقط با اتصال امن HTTPS کار می‌کند.</div>
+</div>
+<script>
+const chat=document.querySelector('#chat'), form=document.querySelector('#form'), input=document.querySelector('#input'), send=document.querySelector('#send'), statusEl=document.querySelector('#status'), micBtn=document.querySelector('#mic'), voiceBtn=document.querySelector('#voice');
+let history=[], voiceOn=true;
+function addMsg(role,text,extra=''){const el=document.createElement('div');el.className='msg '+role+(extra?' '+extra:'');el.textContent=text;chat.appendChild(el);chat.scrollTop=chat.scrollHeight;return el}
+function speak(text){if(!voiceOn||!('speechSynthesis'in window))return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='fa-IR';u.rate=1;window.speechSynthesis.speak(u)}
+async function sendMessage(text){text=text.trim();if(!text)return;addMsg('user',text);history.push({role:'user',content:text});input.value='';input.style.height='auto';send.disabled=true;statusEl.textContent='در حال پاسخ…';const wait=addMsg('assistant','دارم فکر می‌کنم…');
+try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history})});const data=await r.json();if(!r.ok)throw new Error(data.error||'خطا در دریافت پاسخ');wait.textContent=data.answer;history.push({role:'assistant',content:data.answer});speak(data.answer)}catch(e){wait.classList.add('error');wait.textContent='نتوانستم پاسخ آنلاین بگیرم: '+e.message;history.pop()}finally{send.disabled=false;statusEl.textContent='آماده';input.focus();chat.scrollTop=chat.scrollHeight}}
+form.addEventListener('submit',e=>{e.preventDefault();sendMessage(input.value)});
+input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(input.scrollHeight,140)+'px'});
+document.querySelector('#clear').addEventListener('click',()=>{history=[];chat.innerHTML='';addMsg('assistant','گفتگو پاک شد. چه کمکی از دستم برمی‌آید؟');if('speechSynthesis'in window)window.speechSynthesis.cancel()});
+voiceBtn.addEventListener('click',()=>{voiceOn=!voiceOn;voiceBtn.textContent='🔊 پاسخ صوتی: '+(voiceOn?'روشن':'خاموش');if(!voiceOn&&'speechSynthesis'in window)window.speechSynthesis.cancel()});
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(SR){const rec=new SR();rec.lang='fa-IR';rec.interimResults=false;rec.maxAlternatives=1;rec.onstart=()=>{micBtn.textContent='🎙️ گوش می‌دهم…';statusEl.textContent='در حال شنیدن'};rec.onresult=e=>{input.value=e.results[0][0].transcript;sendMessage(input.value)};rec.onerror=e=>{statusEl.textContent='خطای میکروفون';addMsg('assistant','میکروفون کار نکرد. مجوز میکروفون و اتصال امن HTTPS را بررسی کن.','error')};rec.onend=()=>{micBtn.textContent='🎙️ صحبت کن';statusEl.textContent='آماده'};micBtn.addEventListener('click',()=>{try{rec.start()}catch(_){}})}else{micBtn.addEventListener('click',()=>addMsg('assistant','این مرورگر تشخیص گفتار را پشتیبانی نمی‌کند. از Chrome به‌روز استفاده کن.','error'))}
+fetch('/api/health').then(r=>r.json()).then(d=>{if(d.ok)statusEl.textContent='سرور متصل'}).catch(()=>{statusEl.textContent='آفلاین'});
+</script>
+</body>
+</html>
